@@ -21,6 +21,7 @@ var (
 
 	configFile  string
 	versionFlag bool
+	proxyFlag   string
 )
 
 func init() {
@@ -31,7 +32,7 @@ func init() {
 	flag.StringVar(&key.Device, "device", "", "Use this device [driver://]name")
 	flag.StringVar(&key.Interface, "interface", "", "Use network INTERFACE (Linux/MacOS only)")
 	flag.StringVar(&key.LogLevel, "loglevel", "info", "Log level [debug|info|warn|error|silent]")
-	flag.StringVar(&key.Proxy, "proxy", "", "Use this proxy [protocol://]host[:port]")
+	flag.StringVar(&proxyFlag, "proxy", "", "Use this proxy [protocol://]host[:port]")
 	flag.StringVar(&key.RestAPI, "restapi", "", "HTTP statistic server listen address")
 	flag.StringVar(&key.TCPSendBufferSize, "tcp-sndbuf", "", "Set TCP send buffer size for netstack")
 	flag.StringVar(&key.TCPReceiveBufferSize, "tcp-rcvbuf", "", "Set TCP receive buffer size for netstack")
@@ -59,6 +60,13 @@ func main() {
 		}
 		if err = yaml.Unmarshal(data, key); err != nil {
 			log.Fatalf("Failed to unmarshal config file '%s': %v", configFile, err)
+		}
+	}
+	
+	// Handle command line proxy flag
+	if proxyFlag != "" {
+		if err := key.Proxy.UnmarshalYAML(&yaml.Node{Kind: yaml.ScalarNode, Value: proxyFlag}); err != nil {
+			log.Fatalf("Failed to parse proxy flag: %v", err)
 		}
 	}
 

@@ -1,11 +1,13 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/netip"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/go-units"
@@ -18,7 +20,9 @@ import (
 	"github.com/xjasonlyu/tun2socks/v2/core/option"
 	"github.com/xjasonlyu/tun2socks/v2/dialer"
 	"github.com/xjasonlyu/tun2socks/v2/log"
+	M "github.com/xjasonlyu/tun2socks/v2/metadata"
 	"github.com/xjasonlyu/tun2socks/v2/proxy"
+	"github.com/xjasonlyu/tun2socks/v2/proxy/proto"
 	"github.com/xjasonlyu/tun2socks/v2/restapi"
 	"github.com/xjasonlyu/tun2socks/v2/tunnel"
 )
@@ -166,7 +170,7 @@ func restAPI(k *Key) error {
 }
 
 func netstack(k *Key) (err error) {
-	if k.Proxy == "" {
+	if k.Proxy.IsEmpty() {
 		return errors.New("empty proxy")
 	}
 	if k.Device == "" {
@@ -190,10 +194,27 @@ func netstack(k *Key) (err error) {
 		}
 	}()
 
-	if _defaultProxy, err = parseProxy(k.Proxy); err != nil {
-		return
+	proxies := k.Proxy.GetProxies()
+	if len(proxies) == 1 {
+		// Single proxy mode
+		if _defaultProxy, err = parseProxy(proxies[0]); err != nil {
+			return
+		}
+		tunnel.T().SetDialer(_defaultProxy)
+	} else {
+		// Multiple proxy mode - use round-robin proxy
+		var proxyList []proxy.Proxy
+		for _, proxyStr := range proxies {
+			p, parseErr := parseProxy(proxyStr)
+			if parseErr != nil {
+				return parseErr
+			}
+			proxyList = append(proxyList, p)
+		}
+		roundRobinProxy := NewRoundRobinProxy(proxyList)
+		_defaultProxy = roundRobinProxy
+		tunnel.T().SetDialer(roundRobinProxy)
 	}
-	tunnel.T().SetDialer(_defaultProxy)
 
 	if _defaultDevice, err = parseDevice(k.Device, uint32(k.MTU)); err != nil {
 		return
@@ -240,4 +261,52 @@ func netstack(k *Key) (err error) {
 		_defaultProxy.Proto(), _defaultProxy.Addr(),
 	)
 	return nil
+}
+
+// RoundRobinProxy implements round-robin load balancing across multiple proxies
+type RoundRobinProxy struct {
+	proxies []proxy.Proxy
+	counter uint64
+}
+
+// NewRoundRobinProxy creates a new round-robin proxy with the given proxy list
+func NewRoundRobinProxy(proxies []proxy.Proxy) *RoundRobinProxy {
+	return &RoundRobinProxy{
+		proxies: proxies,
+		counter: 0,
+	}
+}
+
+// nextProxy returns the next proxy in round-robin fashion
+func (rr *RoundRobinProxy) nextProxy() proxy.Proxy {
+	n := atomic.AddUint64(&rr.counter, 1)
+	return rr.proxies[(n-1)%uint64(len(rr.proxies))]
+}
+
+// DialContext implements proxy.Dialer interface
+func (rr *RoundRobinProxy) DialContext(ctx context.Context, metadata *M.Metadata) (net.Conn, error) {
+	proxy := rr.nextProxy()
+	return proxy.DialContext(ctx, metadata)
+}
+
+// DialUDP implements proxy.Dialer interface
+func (rr *RoundRobinProxy) DialUDP(metadata *M.Metadata) (net.PacketConn, error) {
+	proxy := rr.nextProxy()
+	return proxy.DialUDP(metadata)
+}
+
+// Addr implements proxy.Proxy interface - returns first proxy's address for logging
+func (rr *RoundRobinProxy) Addr() string {
+	if len(rr.proxies) > 0 {
+		return rr.proxies[0].Addr()
+	}
+	return ""
+}
+
+// Proto implements proxy.Proxy interface - returns first proxy's protocol for logging
+func (rr *RoundRobinProxy) Proto() proto.Proto {
+	if len(rr.proxies) > 0 {
+		return rr.proxies[0].Proto()
+	}
+	return proto.Direct
 }

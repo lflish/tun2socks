@@ -12,6 +12,7 @@
 
 - **Universal Proxying**: Transparently routes all network traffic from any application through a proxy.
 - **Multi-Protocol**: Supports HTTP/SOCKS4/SOCKS5/Shadowsocks proxies with optional authentication.
+- **Multi-Server Load Balancing**: Supports multiple proxy servers with automatic round-robin load balancing.
 - **Cross-Platform**: Runs on Linux/macOS/Windows/FreeBSD/OpenBSD with platform-specific optimizations.
 - **Gateway Mode**: Acts as a Layer 3 gateway to route traffic from other devices on the same network.
 - **Full IPv6 Compatibility**: Natively supports IPv6; seamlessly tunnels IPv4 over IPv6 and vice versa.
@@ -24,6 +25,41 @@
 
 For all scenarios of usage, tun2socks performs best.
 See [benchmarks](https://github.com/xjasonlyu/tun2socks/wiki/Benchmarks) for more details.
+
+## Configuration
+
+### Multi-Server Load Balancing
+
+tun2socks supports multiple proxy servers with automatic round-robin load balancing. You can configure multiple proxies in two ways:
+
+#### Command Line
+```bash
+# Single proxy (backward compatible)
+./tun2socks -device tun0 -proxy socks5://127.0.0.1:1080
+
+# Multiple proxies using YAML config file
+./tun2socks -device tun0 -config config.yaml
+```
+
+#### YAML Configuration
+```yaml
+# Single proxy (string format)
+proxy: socks5://127.0.0.1:1080
+
+# Multiple proxies (array format) - automatic round-robin load balancing
+proxy:
+  - socks5://127.0.0.1:1080
+  - socks5://127.0.0.1:1081
+  - http://127.0.0.1:8080
+  - ss://method:password@127.0.0.1:8388
+
+# Other configuration options
+device: tun0
+mtu: 1500
+loglevel: info
+```
+
+When multiple proxies are configured, tun2socks will automatically distribute connections across all servers using round-robin load balancing. This provides better performance and redundancy.
 
 ## Documentation
 

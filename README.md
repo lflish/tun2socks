@@ -8,6 +8,18 @@
 [![Docker Pulls][6]](https://hub.docker.com/r/xjasonlyu/tun2socks)
 [![Releases][7]](https://github.com/xjasonlyu/tun2socks/releases)
 
+> [中文版 README](README_CN.md) | [Original Project](https://github.com/xjasonlyu/tun2socks)
+
+## ✨ What's New in This Fork
+
+This fork extends the original [xjasonlyu/tun2socks](https://github.com/xjasonlyu/tun2socks) with **multi-server load balancing** capabilities:
+
+- 🔄 **Round-Robin Load Balancing**: Automatically distributes connections across multiple proxy servers
+- 📈 **Better Performance**: Improved throughput and reduced latency with multiple proxies
+- 🛡️ **Enhanced Redundancy**: Automatic failover capabilities when servers are unavailable
+- 🔧 **Backward Compatible**: Existing single-proxy configurations continue to work unchanged
+- 📝 **Flexible Configuration**: Support both YAML array and single string proxy configurations
+
 ## Features
 
 - **Universal Proxying**: Transparently routes all network traffic from any application through a proxy.
@@ -50,8 +62,6 @@ proxy: socks5://127.0.0.1:1080
 proxy:
   - socks5://127.0.0.1:1080
   - socks5://127.0.0.1:1081
-  - http://127.0.0.1:8080
-  - ss://method:password@127.0.0.1:8388
 
 # Other configuration options
 device: tun0

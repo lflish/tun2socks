@@ -8,94 +8,93 @@
 [![Docker Pulls][6]](https://hub.docker.com/r/xjasonlyu/tun2socks)
 [![Releases][7]](https://github.com/xjasonlyu/tun2socks/releases)
 
-> [中文版 README](README_CN.md) | [Original Project](https://github.com/xjasonlyu/tun2socks)
+> [English README](README_EN.md) | [原始项目](https://github.com/xjasonlyu/tun2socks)
 
-## ✨ What's New in This Fork
+## ✨ 此分支的新特性
 
-This fork extends the original [xjasonlyu/tun2socks](https://github.com/xjasonlyu/tun2socks) with **multi-server load balancing** capabilities:
+本分支在原始 [xjasonlyu/tun2socks](https://github.com/xjasonlyu/tun2socks) 基础上扩展了**多服务器负载均衡**功能：
 
-- 🔄 **Round-Robin Load Balancing**: Automatically distributes connections across multiple proxy servers
-- 📈 **Better Performance**: Improved throughput and reduced latency with multiple proxies
-- 🛡️ **Enhanced Redundancy**: Automatic failover capabilities when servers are unavailable
-- 🔧 **Backward Compatible**: Existing single-proxy configurations continue to work unchanged
-- 📝 **Flexible Configuration**: Support both YAML array and single string proxy configurations
+- 🔄 **轮询负载均衡**: 自动在多个代理服务器之间分配连接
+- 📈 **更好的性能**: 通过多代理提升吞吐量并降低延迟
+- 🛡️ **增强冗余**: 服务器不可用时自动故障转移
+- 🔧 **向后兼容**: 现有的单代理配置继续无变化工作
+- 📝 **灵活配置**: 支持 YAML 数组和单字符串代理配置
 
-## Features
+## 功能特性
 
-- **Universal Proxying**: Transparently routes all network traffic from any application through a proxy.
-- **Multi-Protocol**: Supports HTTP/SOCKS4/SOCKS5/Shadowsocks proxies with optional authentication.
-- **Multi-Server Load Balancing**: Supports multiple proxy servers with automatic round-robin load balancing.
-- **Cross-Platform**: Runs on Linux/macOS/Windows/FreeBSD/OpenBSD with platform-specific optimizations.
-- **Gateway Mode**: Acts as a Layer 3 gateway to route traffic from other devices on the same network.
-- **Full IPv6 Compatibility**: Natively supports IPv6; seamlessly tunnels IPv4 over IPv6 and vice versa.
-- **User-Space Networking**: Leverages the **[gVisor](https://github.com/google/gvisor)** network stack for enhanced
-  performance and flexibility.
+- **通用代理**: 透明地将任何应用程序的所有网络流量通过代理路由
+- **多协议支持**: 支持 HTTP/SOCKS4/SOCKS5/Shadowsocks 代理及可选身份验证
+- **多服务器负载均衡**: 支持多个代理服务器的自动轮询负载均衡
+- **跨平台**: 在 Linux/macOS/Windows/FreeBSD/OpenBSD 上运行，具有平台特定优化
+- **网关模式**: 作为第3层网关路由同一网络上其他设备的流量
+- **完整 IPv6 兼容性**: 原生支持 IPv6；无缝地在 IPv4 和 IPv6 之间隧道传输
+- **用户空间网络**: 利用 **[gVisor](https://github.com/google/gvisor)** 网络栈增强性能和灵活性
 
-## Benchmarks
+## 性能基准
 
 ![benchmark](docs/benchmark.png)
 
-For all scenarios of usage, tun2socks performs best.
-See [benchmarks](https://github.com/xjasonlyu/tun2socks/wiki/Benchmarks) for more details.
+在所有使用场景中，tun2socks 性能表现最佳。
+更多详情请参见 [基准测试](https://github.com/xjasonlyu/tun2socks/wiki/Benchmarks)。
 
-## Configuration
+## 配置说明
 
-### Multi-Server Load Balancing
+### 多服务器负载均衡
 
-tun2socks supports multiple proxy servers with automatic round-robin load balancing. You can configure multiple proxies in two ways:
+tun2socks 支持多个代理服务器的自动轮询负载均衡。您可以通过两种方式配置多个代理：
 
-#### Command Line
+#### 命令行使用
 ```bash
-# Single proxy (backward compatible)
+# 单个代理（向后兼容）
 ./tun2socks -device tun0 -proxy socks5://127.0.0.1:1080
 
-# Multiple proxies using YAML config file
+# 多个代理使用 YAML 配置文件
 ./tun2socks -device tun0 -config config.yaml
 ```
 
-#### YAML Configuration
+#### YAML 配置
 ```yaml
-# Single proxy (string format)
+# 单个代理（字符串格式）
 proxy: socks5://127.0.0.1:1080
 
-# Multiple proxies (array format) - automatic round-robin load balancing
+# 多个代理（数组格式）- 自动轮询负载均衡
 proxy:
   - socks5://127.0.0.1:1080
   - socks5://127.0.0.1:1081
 
-# Other configuration options
+# 其他配置选项
 device: tun0
 mtu: 1500
 loglevel: info
 ```
 
-When multiple proxies are configured, tun2socks will automatically distribute connections across all servers using round-robin load balancing. This provides better performance and redundancy.
+当配置多个代理时，tun2socks 将使用轮询负载均衡自动在所有服务器之间分配连接。这提供了更好的性能和冗余性。
 
-## Documentation
+## 文档
 
-- [Install from Source](https://github.com/xjasonlyu/tun2socks/wiki/Install-from-Source)
-- [Quickstart Examples](https://github.com/xjasonlyu/tun2socks/wiki/Examples)
-- [Memory Optimization](https://github.com/xjasonlyu/tun2socks/wiki/Memory-Optimization)
+- [从源码安装](https://github.com/xjasonlyu/tun2socks/wiki/Install-from-Source)
+- [快速开始示例](https://github.com/xjasonlyu/tun2socks/wiki/Examples)
+- [内存优化](https://github.com/xjasonlyu/tun2socks/wiki/Memory-Optimization)
 
-Full documentation and technical guides can be found at [Wiki](https://github.com/xjasonlyu/tun2socks/wiki).
+完整的文档和技术指南可在 [Wiki](https://github.com/xjasonlyu/tun2socks/wiki) 中找到。
 
-## Community
+## 社区
 
-Welcome and feel free to ask any questions at [Discussions](https://github.com/xjasonlyu/tun2socks/discussions).
+欢迎在 [讨论区](https://github.com/xjasonlyu/tun2socks/discussions) 提出任何问题。
 
-## Credits
+## 致谢
 
-- [google/gvisor](https://github.com/google/gvisor) - Application Kernel for Containers
-- [wireguard-go](https://git.zx2c4.com/wireguard-go) - Go Implementation of WireGuard
-- [wintun](https://git.zx2c4.com/wintun/) - Layer 3 TUN Driver for Windows
+- [google/gvisor](https://github.com/google/gvisor) - 容器应用内核
+- [wireguard-go](https://git.zx2c4.com/wireguard-go) - WireGuard 的 Go 实现
+- [wintun](https://git.zx2c4.com/wintun/) - Windows 第3层 TUN 驱动程序
 
-## License
+## 许可证
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fxjasonlyu%2Ftun2socks.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fxjasonlyu%2Ftun2socks?ref=badge_large)
 
-All versions starting from `v2.6.0` are available under the terms of the [MIT License](https://github.com/xjasonlyu/tun2socks/blob/main/LICENSE).
+从 `v2.6.0` 开始的所有版本均在 [MIT 许可证](https://github.com/xjasonlyu/tun2socks/blob/main/LICENSE) 条款下提供。
 
-## Star History
+## Star 历史
 
 <a href="https://star-history.com/#xjasonlyu/tun2socks&Date">
   <picture>

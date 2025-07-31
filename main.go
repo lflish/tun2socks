@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go.uber.org/automaxprocs/maxprocs"
 	"gopkg.in/yaml.v3"
@@ -19,9 +20,13 @@ import (
 var (
 	key = new(engine.Key)
 
-	configFile  string
-	versionFlag bool
-	proxyFlag   string
+	configFile          string
+	versionFlag         bool
+	proxyFlag           string
+	healthCheckEnable   bool
+	healthCheckInterval time.Duration
+	healthCheckTimeout  time.Duration
+	healthCheckURL      string
 )
 
 func init() {
@@ -40,6 +45,10 @@ func init() {
 	flag.StringVar(&key.MulticastGroups, "multicast-groups", "", "Set multicast groups, separated by commas")
 	flag.StringVar(&key.TUNPreUp, "tun-pre-up", "", "Execute a command before TUN device setup")
 	flag.StringVar(&key.TUNPostUp, "tun-post-up", "", "Execute a command after TUN device setup")
+	flag.BoolVar(&healthCheckEnable, "health-check", false, "Enable proxy health check")
+	flag.DurationVar(&healthCheckInterval, "health-check-interval", 0, "Health check interval (default: 30s)")
+	flag.DurationVar(&healthCheckTimeout, "health-check-timeout", 0, "Health check timeout (default: 5s)")
+	flag.StringVar(&healthCheckURL, "health-check-url", "", "Health check target URL (default: http://www.google.com)")
 	flag.BoolVar(&versionFlag, "version", false, "Show version and then quit")
 	flag.Parse()
 }
@@ -62,12 +71,26 @@ func main() {
 			log.Fatalf("Failed to unmarshal config file '%s': %v", configFile, err)
 		}
 	}
-	
+
 	// Handle command line proxy flag
 	if proxyFlag != "" {
 		if err := key.Proxy.UnmarshalYAML(&yaml.Node{Kind: yaml.ScalarNode, Value: proxyFlag}); err != nil {
 			log.Fatalf("Failed to parse proxy flag: %v", err)
 		}
+	}
+
+	// Handle command line health check flags
+	if healthCheckEnable {
+		key.HealthCheck.Enable = healthCheckEnable
+	}
+	if healthCheckInterval > 0 {
+		key.HealthCheck.Interval = healthCheckInterval
+	}
+	if healthCheckTimeout > 0 {
+		key.HealthCheck.Timeout = healthCheckTimeout
+	}
+	if healthCheckURL != "" {
+		key.HealthCheck.URL = healthCheckURL
 	}
 
 	engine.Insert(key)

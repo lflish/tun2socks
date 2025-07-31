@@ -41,6 +41,9 @@ var (
 
 	// _defaultStack holds the default stack for the engine.
 	_defaultStack *stack.Stack
+
+	// _healthChecker holds the health checker instance.
+	_healthChecker *HealthChecker
 )
 
 // Start starts the default engine up.
@@ -86,6 +89,11 @@ func start() error {
 
 func stop() (err error) {
 	_engineMu.Lock()
+	// 停止健康检查器
+	if _healthChecker != nil {
+		_healthChecker.Stop()
+		_healthChecker = nil
+	}
 	if _defaultDevice != nil {
 		_defaultDevice.Close()
 	}
@@ -214,6 +222,17 @@ func netstack(k *Key) (err error) {
 		roundRobinProxy := NewRoundRobinProxy(proxyList)
 		_defaultProxy = roundRobinProxy
 		tunnel.T().SetDialer(roundRobinProxy)
+
+		// 启动健康检查器（仅在多代理模式下）
+		if k.HealthCheck.Enable {
+			_healthChecker = NewHealthChecker(k.HealthCheck, proxyList, func(healthyProxies []proxy.Proxy) {
+				if rrProxy, ok := _defaultProxy.(*RoundRobinProxy); ok {
+					rrProxy.UpdateProxies(healthyProxies)
+					log.Infof("[ENGINE] 更新健康代理列表，当前健康代理数量: %d", len(healthyProxies))
+				}
+			})
+			_healthChecker.Start()
+		}
 	}
 
 	if _defaultDevice, err = parseDevice(k.Device, uint32(k.MTU)); err != nil {
@@ -267,6 +286,7 @@ func netstack(k *Key) (err error) {
 type RoundRobinProxy struct {
 	proxies []proxy.Proxy
 	counter uint64
+	mu      sync.RWMutex
 }
 
 // NewRoundRobinProxy creates a new round-robin proxy with the given proxy list
@@ -277,8 +297,23 @@ func NewRoundRobinProxy(proxies []proxy.Proxy) *RoundRobinProxy {
 	}
 }
 
+// UpdateProxies updates the proxy list dynamically
+func (rr *RoundRobinProxy) UpdateProxies(proxies []proxy.Proxy) {
+	rr.mu.Lock()
+	defer rr.mu.Unlock()
+	rr.proxies = make([]proxy.Proxy, len(proxies))
+	copy(rr.proxies, proxies)
+}
+
 // nextProxy returns the next proxy in round-robin fashion
 func (rr *RoundRobinProxy) nextProxy() proxy.Proxy {
+	rr.mu.RLock()
+	defer rr.mu.RUnlock()
+
+	if len(rr.proxies) == 0 {
+		return nil
+	}
+
 	n := atomic.AddUint64(&rr.counter, 1)
 	return rr.proxies[(n-1)%uint64(len(rr.proxies))]
 }
@@ -286,12 +321,18 @@ func (rr *RoundRobinProxy) nextProxy() proxy.Proxy {
 // DialContext implements proxy.Dialer interface
 func (rr *RoundRobinProxy) DialContext(ctx context.Context, metadata *M.Metadata) (net.Conn, error) {
 	proxy := rr.nextProxy()
+	if proxy == nil {
+		return nil, errors.New("no healthy proxy available")
+	}
 	return proxy.DialContext(ctx, metadata)
 }
 
 // DialUDP implements proxy.Dialer interface
 func (rr *RoundRobinProxy) DialUDP(metadata *M.Metadata) (net.PacketConn, error) {
 	proxy := rr.nextProxy()
+	if proxy == nil {
+		return nil, errors.New("no healthy proxy available")
+	}
 	return proxy.DialUDP(metadata)
 }
 
